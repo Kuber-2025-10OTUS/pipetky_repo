@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homework
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: homework
+  namespace: homework
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.29
+    ports:
+    - containerPort: 8000
+    volumeMounts:
+    - name: homework-volume
+      mountPath: /homework
+    - name: nginx-config-volume
+      mountPath: /etc/nginx/conf.d/example.conf
+      subPath: example.conf
+      readOnly: true
+    lifecycle:
+      preStop:
+        exec:
+          command: ["/bin/sh", "-c", "rm -f /homework/index.html"]
+  initContainers:
+  - name: init
+    image: busybox:1.28
+    command: ['wget', "https://gist.githubusercontent.com/chrisvfritz/bc010e6ed25b802da7eb/raw/18eaa48addae7e3021f6bcea03b7a6557e3f0132/index.html", '-O', "/init/index.html"]
+    volumeMounts:
+    - mountPath: /init
+      name: homework-volume
+  volumes:
+  - name: homework-volume
+    emptyDir:
+      sizeLimit: 10Mi
+  - name: nginx-config-volume
+    configMap:
+      name: example-config
+      items:
+      - key: example.conf
+        path: example.conf
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: homework
+  name: example-config
+data:
+  example.conf: |-
+    server {
+        listen 8000;
+        server_name _; # Or your specific domain name
+
+        root /homework; # The directory where your static files are located
+
+        location / {
+            try_files $uri $uri/ =404; # Tries to serve the file, then the directory index, or returns 404
+        }
+    }

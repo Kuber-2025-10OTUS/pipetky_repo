@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: homework
+  name: homework-deployment
+  labels:
+    app: homework
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  replicas: 3
+  selector:
+    matchLabels:
+      app: homework
+  template:
+    metadata:
+      labels:
+        app: homework
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: homework
+                  operator: In
+                  values:
+                    - "true"
+      containers:
+      - name: nginx
+        image: nginx:1.29
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: homework-volume
+          mountPath: /homework
+        - name: nginx-config-volume
+          mountPath: /etc/nginx/conf.d/example.conf
+          subPath: example.conf
+          readOnly: true
+        - name: homework-configmap
+          mountPath: /homework/conf
+          readOnly: true
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "rm -f /homework/index.html"]
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      initContainers:
+      - name: init
+        image: busybox:1.28
+
+        command:
+            - sh
+            - -c
+            - |
+              mkdir -p /init/conf &&
+              wget -O /init/index.html https://gist.githubusercontent.com/chrisvfritz/bc010e6ed25b802da7eb/raw/18eaa48addae7e3021f6bcea03b7a6557e3f0132/index.html
+        volumeMounts:
+        - mountPath: /init
+          name: homework-volume
+      volumes:
+      - name: homework-volume
+        persistentVolumeClaim:
+          claimName: homework-pvc
+      - name: nginx-config-volume
+        configMap:
+          name: example-config
+          items:
+          - key: example.conf
+            path: example.conf
+      - name: homework-configmap
+        configMap:
+          name: homework-cm
+          items:
+          - key: homework_conf
+            path: homework_conf
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: homework
+  name: example-config
+data:
+  example.conf: |-
+    server {
+        listen 8000;
+        server_name _; # Or your specific domain name
+
+        root /homework; # The directory where your static files are located
+
+        location / {
+            try_files $uri $uri/ =404; # Tries to serve the file, then the directory index, or returns 404
+        }
+                location /conf/ {
+            types { }
+            default_type text/plain;
+            add_header Content-Disposition "inline"; # гарантирует отображение, а не скачивание
+        }
+    }

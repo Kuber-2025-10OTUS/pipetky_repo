@@ -3,8 +3,7 @@ kind: Ingress
 metadata:
   namespace: homework
   name: homework.otus
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+
 spec:
   ingressClassName: nginx
   rules:

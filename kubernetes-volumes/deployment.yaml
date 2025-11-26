@@ -97,11 +97,11 @@ data:
         root /homework; # The directory where your static files are located
 
         location / {
-            try_files $uri $uri/ =404; # Tries to serve the file, then the directory index, or returns 404
+            try_files $uri $uri/ /index.html; # Tries to serve the file, then the directory index, or returns 404
         }
-                location /conf/ {
+        location /conf/ {
             types { }
             default_type text/plain;
-            add_header Content-Disposition "inline"; # гарантирует отображение, а не скачивание
+            add_header Content-Disposition "inline";
         }
     }

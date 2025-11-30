@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: homework
+  name: homework-cm
+data:
+  homework_conf: |-
+    It is also possible to store free text and procedures, for example to display or remind the user of the five safety regulations to DIN VDE 0105.

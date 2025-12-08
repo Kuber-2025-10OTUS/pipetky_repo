@@ -1,0 +1,9 @@
+clusterId: "kafka-prod-cluster"
+controller:
+  controllerOnly: true
+broker:
+  replicaCount: 5
+
+image:
+  repository: bitnamilegacy/kafka
+  tag: 3.5.2-debian-12-r30

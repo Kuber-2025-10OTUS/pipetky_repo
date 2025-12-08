@@ -1,0 +1,23 @@
+controller:
+  replicaCount: 3
+  controllerOnly: true
+broker:
+  replicaCount: 1
+
+image:
+  repository: bitnamilegacy/kafka
+  tag: "latest"
+
+listeners:
+  client:
+    protocol: PLAINTEXT
+  controller:
+    protocol: PLAINTEXT
+  interbroker:
+    protocol: PLAINTEXT
+  external:
+    protocol: PLAINTEXT
+sasl:
+  enabledMechanisms: ""
+  interBrokerMechanism: ""
+  controllerMechanism: ""

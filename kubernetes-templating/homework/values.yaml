@@ -1,0 +1,293 @@
+# Default values for homework.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+replicaCount: 3
+
+namespace: homework
+
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  repository: nginx
+  # This sets the pull policy for images.
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.29"
+
+# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+
+initContainers:
+  - name: init
+    image: busybox:1.28
+    command:
+        - sh
+        - -c
+        - |
+          mkdir -p /init/conf &&
+          wget -O /init/index.html https://gist.githubusercontent.com/chrisvfritz/bc010e6ed25b802da7eb/raw/18eaa48addae7e3021f6bcea03b7a6557e3f0132/index.html
+    volumeMounts:
+    - mountPath: /init
+      name: homework-volume
+
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created.
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account.
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template.
+  name: ""
+
+# This is for setting Kubernetes Annotations to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+# This is for setting Kubernetes Labels to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+service:
+  # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  type: LoadBalancer
+  # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
+  port: 80
+  targetPort: 8000
+
+
+# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: homework.otus
+      paths:
+        - path: /homepage
+          pathType: Prefix
+          backend:
+            service:
+              name: homework
+              port:
+                number: 80
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: homework
+              port:
+                number: 80
+  tls: []
+    # - secretName: chart-example-tls
+    #   hosts:
+    #     - chart-example.local
+
+# -- Expose the service via gateway-api HTTPRoute
+# Requires Gateway API resources and suitable controller installed within the cluster
+# (see: https://gateway-api.sigs.k8s.io/guides/)
+httpRoute:
+  # HTTPRoute enabled.
+  enabled: false
+  # HTTPRoute annotations.
+  annotations: {}
+  # Which Gateways this Route is attached to.
+  parentRefs:
+  - name: gateway
+    sectionName: http
+    # namespace: default
+  # Hostnames matching HTTP header.
+  hostnames:
+  - chart-example.local
+  # List of rules and filters applied.
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /headers
+  #   filters:
+  #   - type: RequestHeaderModifier
+  #     requestHeaderModifier:
+  #       set:
+  #       - name: My-Overwrite-Header
+  #         value: this-is-the-only-value
+  #       remove:
+  #       - User-Agent
+  # - matches:
+  #   - path:
+  #       type: PathPrefix
+  #       value: /echo
+  #     headers:
+  #     - name: version
+  #       value: v2
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+# livenessProbe:
+#   httpGet:
+#     path: /
+#     port: 8000
+livenessProbe:
+  enabled: false
+readinessProbe:
+  enabled: true
+  data:
+    httpGet:
+      path: /index.html
+      port: 8000
+
+# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes:
+  - name: homework-volume
+    persistentVolumeClaim:
+      claimName: homework-pvc
+  - name: nginx-config-volume
+    configMap:
+      name:  nginx-config
+      items:
+      - key: example.conf
+        path: example.conf
+  - name: homework-configmap
+    configMap:
+      name: app-config
+      items:
+      - key: homework_conf
+        path: homework_conf
+  # - name: foo
+  #   secret:
+  #     secretName: mysecret
+  #     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts:
+  - name: homework-volume
+    mountPath: /homework
+  - name: nginx-config-volume
+    mountPath: /etc/nginx/conf.d/example.conf
+    subPath: example.conf
+    readOnly: true
+  - name: homework-configmap
+    mountPath: /homework/conf
+    readOnly: true
+  # - name: foo
+  #   mountPath: "/etc/foo"
+  #   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+          - key: homework
+            operator: In
+            values:
+              - "true"
+
+
+
+configMaps:
+  - name: nginx-config
+    data:
+      example.conf: |
+        server {
+            listen 8000;
+            server_name _;
+
+            root /homework;
+
+            location / {
+                try_files $uri $uri/ /index.html;
+            }
+            location /conf/ {
+                types { }
+                default_type text/plain;
+                add_header Content-Disposition "inline";
+            }
+        }
+
+        
+  - name: app-config
+    data:
+      homework_conf: |
+        It is also possible to store free text and procedures, for example to display or remind the user of the five safety regulations to DIN VDE 0105.
+        
+ 
+persistence:
+  size: 10Mi
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: "homework-sc"
+
+mysql:
+  enabled: true
+  containerSecurityContext:
+    runAsUser: 0
+    runAsNonRoot: false
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/mysql
+    tag: 9.4.0-debian-12-r1
+    pullPolicy: IfNotPresent
+  auth:
+    user: "user"
+    rootPassword: "newRootPassword123"
+    password: "newUserPassword123"
+    replicationPassword: "newReplicationPassword123"
+  volumePermissions:
+    enabled: true
+    image:
+      repository: bitnamilegacy/os-shell
+      tag: latest
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: "homework-sc"
+      accessModes:
+        - ReadWriteOnce
+
+passwordUpdateJob:
+  enabled: true

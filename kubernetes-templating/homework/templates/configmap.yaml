@@ -1,0 +1,18 @@
+{{- range .Values.configMaps }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ $.Values.namespace | default "default" }}
+  name: {{ .name }}
+  labels:
+    {{- include "homework.labels" $ | nindent 4 }}
+    {{- with .labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+data:
+  {{- range $key, $value := .data }}
+  {{ $key }}: |
+{{ $value | indent 4 }}
+  {{- end }}
+{{- end }}

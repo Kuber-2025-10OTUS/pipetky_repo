@@ -1,0 +1,2 @@
+kopf>=1.39
+kubernetes>=34.1.0
